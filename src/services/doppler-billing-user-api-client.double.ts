@@ -42,6 +42,7 @@ export const fakePaymentMethodInformation = {
   idConsumerType: '',
   identificationType: '',
   identificationNumber: '',
+  responsableIVA: '0',
 };
 
 export const fakePaymentMethod = {
@@ -72,6 +73,7 @@ export const fakePaymentMethodInformationWithTransfer = {
   idConsumerType: 'CF',
   identificationType: '',
   identificationNumber: '12345678',
+  responsableIVA: '0',
 };
 
 export class HardcodedDopplerBillingUserApiClient implements DopplerBillingUserApiClient {

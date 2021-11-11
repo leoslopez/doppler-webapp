@@ -23,6 +23,7 @@ export const fieldNames = {
   consumerType: 'consumerType',
   businessName: 'businessName',
   identificationNumber: 'identificationNumber',
+  responsableIVA: 'responsableIVA',
 };
 
 export const paymentType = {

@@ -10,8 +10,9 @@ import {
 } from '../../../form-helpers/form-helpers';
 import { Loading } from '../../../Loading/Loading';
 import { actionPage } from '../Checkout';
-import { useFormikContext } from 'formik';
+import { useFormikContext, Field } from 'formik';
 import { fieldNames, paymentType } from './PaymentMethod';
+import { validateCuit } from '../../../../validations';
 
 export const finalConsumer = 'CF';
 
@@ -97,6 +98,7 @@ export const TransferArgentina = ({ paymentMethod, consumerTypes }) => {
             required
             validate={consumerType !== finalConsumer}
             className="field-item field-item--30"
+            validateIdentificationNumber={validateCuit}
           />
         ) : null}
         {consumerType !== '' && consumerType !== finalConsumer ? (
@@ -115,13 +117,121 @@ export const TransferArgentina = ({ paymentMethod, consumerTypes }) => {
   );
 };
 
+export const TransferColombia = ({ paymentMethod, readOnly }) => {
+  const { setValues } = useFormikContext();
+  const intl = useIntl();
+  const _ = (id, values) => intl.formatMessage({ id: id }, values);
+
+  useEffect(() => {
+    setValues({
+      [fieldNames.identificationNumber]: paymentMethod.identificationNumber,
+      [fieldNames.businessName]: paymentMethod.razonSocial,
+      [fieldNames.responsableIVA]: paymentMethod.responsableIVA ?? false,
+      [fieldNames.paymentMethodName]: paymentType.transfer,
+    });
+  }, [
+    paymentMethod.identificationNumber,
+    paymentMethod.razonSocial,
+    paymentMethod.responsableIVA,
+    setValues,
+  ]);
+
+  return (
+    <>
+      {readOnly ? (
+        <li aria-label="resume data" className="field-item field-item--70 dp-p-r">
+          <label>
+            {`NIT: ${paymentMethod?.identificationNumber}`}
+            {`, ${paymentMethod?.razonSocial}`}
+            {`${paymentMethod.responsableIVA === '1' ? `, Responsable IVA` : ''}`}
+          </label>
+        </li>
+      ) : (
+        <>
+          <FieldItem className="field-item">
+            <FieldGroup>
+              <InputFieldItem
+                type="text"
+                fieldName={fieldNames.businessName}
+                id="businessName"
+                label={`*${_('checkoutProcessForm.payment_method.business_name')}`}
+                withNameValidation
+                required
+                className="field-item field-item--70 dp-p-r"
+              />
+              <CuitFieldItem
+                type="text"
+                aria-label="identificationNumber"
+                fieldName={fieldNames.identificationNumber}
+                id="identificationNumber"
+                label={`*${_('checkoutProcessForm.payment_method.identification_type_colombia')}:`}
+                maxLength={11}
+                required
+                className="field-item field-item--30"
+                validateIdentificationNumber={validateCuit}
+              />
+            </FieldGroup>
+          </FieldItem>
+          <FieldItem className="field-item">
+            <label>{`*${_('checkoutProcessForm.payment_method.responsable_iva')}:`}</label>
+            <Field name="responsableIVA">
+              {({ field }) => (
+                <ul role="group" aria-labelledby="checkbox-group" className="dp-radio-input">
+                  <li>
+                    <div className="dp-volume-option">
+                      <label>
+                        <input
+                          aria-label={'checkoutProcessForm.payment_method.responsable_iva'}
+                          id={'checkoutProcessForm.payment_method.responsable_iva_no'}
+                          type="radio"
+                          name={fieldNames.responsableIVA}
+                          {...field}
+                          value={'0'}
+                          checked={field.value === '0'}
+                        />
+                        <span>{'checkoutProcessForm.payment_method.responsable_iva_no'}</span>
+                      </label>
+                    </div>
+                  </li>
+                  <li>
+                    <div className="dp-volume-option">
+                      <label>
+                        <input
+                          aria-label={'checkoutProcessForm.payment_method.responsable_iva'}
+                          id={'checkoutProcessForm.payment_method.responsable_iva_yes'}
+                          type="radio"
+                          name={fieldNames.responsableIVA}
+                          {...field}
+                          value={'1'}
+                          checked={field.value === '1'}
+                        />
+                        <span>{'checkoutProcessForm.payment_method.responsable_iva_yes'}</span>
+                      </label>
+                    </div>
+                  </li>
+                </ul>
+              )}
+            </Field>
+          </FieldItem>
+        </>
+      )}
+    </>
+  );
+};
+
 export const Transfer = InjectAppServices(
   ({
     dependencies: { dopplerBillingUserApiClient, dopplerAccountPlansApiClient, staticDataClient },
     optionView,
   }) => {
     const intl = useIntl();
-    const [state, setState] = useState({ loading: true, paymentMethod: {}, readOnly: true });
+    const [state, setState] = useState({
+      loading: true,
+      paymentMethod: {},
+      readOnly: true,
+      country: '',
+      responsableIVA: false,
+    });
 
     useEffect(() => {
       const getConsumerTypesData = async (country, language) => {
@@ -156,6 +266,8 @@ export const Transfer = InjectAppServices(
             identificationType,
             loading: false,
             readOnly: true,
+            country: billingInformationResult.value.country,
+            responsableIVA: paymentMethodData.value.responsableIVA,
           });
         } else {
           setState({
@@ -165,6 +277,8 @@ export const Transfer = InjectAppServices(
             selectedConsumerType,
             identificationType,
             consumerTypes,
+            country: billingInformationResult.value.country,
+            responsableIVA: paymentMethodData.value.responsableIVA,
           });
         }
       };
@@ -184,22 +298,29 @@ export const Transfer = InjectAppServices(
           <Loading page />
         ) : (
           <FieldGroup>
-            {state.readOnly ? (
-              <li aria-label="resume data" className="field-item field-item--70 dp-p-r">
-                <label>
-                  {state.selectedConsumerType?.value}, {state.identificationType?.value}:{' '}
-                  {state.paymentMethod?.identificationNumber}
-                  {state.identificationType.key !== finalConsumer
-                    ? `, ${state.paymentMethod?.razonSocial}`
-                    : ''}
-                </label>
-              </li>
-            ) : (
-              <TransferArgentina
-                consumerTypes={state.consumerTypes}
+            {state.country === 'ar' ? (
+              state.readOnly ? (
+                <li aria-label="resume data" className="field-item field-item--70 dp-p-r">
+                  <label>
+                    {state.selectedConsumerType?.value}, {state.identificationType?.value}:{' '}
+                    {state.paymentMethod?.identificationNumber}
+                    {state.identificationType.key !== finalConsumer
+                      ? `, ${state.paymentMethod?.razonSocial}`
+                      : ''}
+                  </label>
+                </li>
+              ) : (
+                <TransferArgentina
+                  consumerTypes={state.consumerTypes}
+                  paymentMethod={state.paymentMethod}
+                ></TransferArgentina>
+              )
+            ) : state.country === 'co' ? (
+              <TransferColombia
                 paymentMethod={state.paymentMethod}
-              ></TransferArgentina>
-            )}
+                readOnly={state.readOnly}
+              ></TransferColombia>
+            ) : null}
           </FieldGroup>
         )}
       </>
